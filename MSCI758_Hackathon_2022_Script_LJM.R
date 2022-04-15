@@ -78,3 +78,12 @@ ggplot(data = basin_impairments_1998_2018_longer) +
   ggtitle("Waterbody Impairments Within Each Basin")
 
 
+
+
+
+
+
+
+
+
+
