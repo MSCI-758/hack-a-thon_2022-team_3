@@ -56,27 +56,79 @@ summary(master_data_2018)
 # clean up data
 master_data_2018_clean=master_data_2018%>%
   filter(PRIORITY.RANK%in%c(1,2,3))%>%
-  mutate(PRIORITY.RANK=as.factor(PRIORITY.RANK))
+  mutate(PRIORITY.RANK=as.factor(PRIORITY.RANK))   # change class from character to categorical
 
 summary(master_data_2018_clean)
 
 
-#  basic bar plot of priority ranks
+# basic bar plot of priority ranks
 ggplot(data=master_data_2018_clean)+
-  geom_bar(aes(x=PRIORITY.RANK))+
+  geom_bar(aes(x=PRIORITY.RANK, fill=PRIORITY.RANK))+
   theme_bw()
 
 
 # plot
 ggplot(data=master_data_2018_clean)+
   geom_bar(aes(x=PRIORITY.RANK))+
-  facet_wrap(~BASIN)
+  facet_wrap(~COUNTY)
 
 
+# counties and ranks
+imp_counties=master_data_2018%>%
+  select(COUNTY,
+         PRIORITY.RANK)%>%
+  group_by(COUNTY)%>%
+  summarise(count_ranks=n())   #count no. ranks and groups them by county
+head(imp_counties)
+dim(imp_counties)
+
+imp_counties=rename(imp_counties, NAME=COUNTY)
+
+# read in county shape file
+
+county_shp = st_read(dsn='data/USA_county_boundaries_cb_2018_us_county_5m', layer='cb_2018_us_county_5m')   #Can specify "layer" parameter
+
+shp = st_read('data/USA_county_boundaries_cb_2018_us_county_5m/cb_2018_us_county_5m.shp')   #Or just read in .shp file (reads in all layers)
+head(county_shp)
+
+sc = county_shp %>%
+  filter(STATEFP==45) %>%
+  mutate(NAME = tolower(NAME))
+glimpse(sc)
+
+head(imp_counties)
+
+imp_counties = imp_counties %>%
+  mutate(NAME = tolower(NAME))
+
+imp_sc_join=sc%>%
+  left_join(imp_counties, by="NAME")
+
+glimpse(imp_sc_join)
+
+# plot
+ggplot() +
+  geom_sf(data=imp_sc_join, aes(fill=count_ranks))+ # color counties by no. ranks
+  scale_fill_gradientn(colors = c("green", "orange", "red"))
+
+ggplot() +
+  geom_sf(data=imp_sc_join, aes(fill=AWATER))+ # color counties by water area
+  scale_fill_gradientn(colors = c("green", "orange", "red"))
 
 
+# create a map with ratio of water to land per county
+area_ratio=imp_sc_join%>%
+  select(NAME,
+         count_ranks,
+         ALAND,
+         AWATER)%>%
+  mutate(ratio=AWATER/(ALAND+AWATER))   # ratio of water to land
+glimpse(area_ratio)
 
 
+ggplot() +
+  geom_sf(data=area_ratio, aes(fill=ratio))+ # color counties by water area
+  scale_fill_gradientn(colors = c("green", "orange", "red"))
 
 
 
