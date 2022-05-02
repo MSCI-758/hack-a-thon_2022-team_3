@@ -23,7 +23,7 @@ master_data_shp_all
 
 
 
-## A look at the imparied water list for 2018 SC
+### A look at the imparied water list for 2018 SC
 
 
 # SC 2018 303d list: https://scdhec.gov/bow/south-carolina-303d-list-impaired-waters-tmdls
@@ -74,18 +74,17 @@ ggplot(data=master_data_2018_clean)+
 
 
 # counties and ranks
-imp_counties=master_data_2018%>%
+imp_counties_2018=master_data_2018%>%
   select(COUNTY,
          PRIORITY.RANK)%>%
   group_by(COUNTY)%>%
-  summarise(count_ranks=n())   #count no. ranks and groups them by county
-head(imp_counties)
-dim(imp_counties)
+  summarise(count_ranks=n())   # count no. ranks and groups them by county
 
-imp_counties=rename(imp_counties, NAME=COUNTY)
+head(imp_counties_2018)
+dim(imp_counties_2018)
+
 
 # read in county shape file
-
 county_shp = st_read(dsn='data/USA_county_boundaries_cb_2018_us_county_5m', layer='cb_2018_us_county_5m')   #Can specify "layer" parameter
 
 shp = st_read('data/USA_county_boundaries_cb_2018_us_county_5m/cb_2018_us_county_5m.shp')   #Or just read in .shp file (reads in all layers)
@@ -96,40 +95,138 @@ sc = county_shp %>%
   mutate(NAME = tolower(NAME))
 glimpse(sc)
 
-head(imp_counties)
 
-imp_counties = imp_counties %>%
-  mutate(NAME = tolower(NAME))
+# join files
+imp_counties_2018=rename(imp_counties_2018, NAME=COUNTY)   # rename to match shp file when joining
 
-imp_sc_join=sc%>%
-  left_join(imp_counties, by="NAME")
+imp_counties_2018=imp_counties_2018%>%
+  mutate(NAME=tolower(NAME))
 
-glimpse(imp_sc_join)
+imp_sc_join_2018=sc%>%
+  left_join(imp_counties_2018, by="NAME")
+
+glimpse(imp_sc_join_2018)
 
 # plot
 ggplot() +
-  geom_sf(data=imp_sc_join, aes(fill=count_ranks))+ # color counties by no. ranks
-  scale_fill_gradientn(colors = c("green", "orange", "red"))
+  geom_sf(data=imp_sc_join_2018, aes(fill=count_ranks))+ # color counties by no. ranks
+  scale_fill_gradientn(colors = c("green", "orange", "red"))+
+  ggtitle("2018 Ranks by County")
 
-ggplot() +
-  geom_sf(data=imp_sc_join, aes(fill=AWATER))+ # color counties by water area
-  scale_fill_gradientn(colors = c("green", "orange", "red"))
+# ggplot() +
+#  geom_sf(data=imp_sc_join_2018, aes(fill=AWATER))+ # color counties by water area
+#  scale_fill_gradientn(colors = c("green", "orange", "red"))
 
 
 # create a map with ratio of water to land per county
-area_ratio=imp_sc_join%>%
+  ### ONLY USED ONCE FOR ALL 3 YEAR COMPARISONS
+area_ratio=imp_sc_join_2018%>%
   select(NAME,
          count_ranks,
          ALAND,
          AWATER)%>%
   mutate(ratio=AWATER/(ALAND+AWATER))   # ratio of water to land
-glimpse(area_ratio)
+glimpse(area_ratio_2018)
 
 
 ggplot() +
-  geom_sf(data=area_ratio, aes(fill=ratio))+ # color counties by water area
-  scale_fill_gradientn(colors = c("green", "orange", "red"))
+  geom_sf(data=area_ratio_2018, aes(fill=ratio))+ # color counties by water area
+  scale_fill_gradientn(colors = c("green", "orange", "red"))+
+  ggtitle("Ratio of Water to Land (m^2)")
 
+
+
+### 2008 data
+# Converted 303d list from .xls to .csv before reading in
+master_data_2008=read_csv("data/SC_303d_lists_2006to2016/2008303dfinal020608prtyrk.csv")   # SC Impaired Waters List 303d for 2008
+
+glimpse(master_data_2008)
+
+master_data_2008=master_data_2008%>%   # doesn't have priority ranks
+  filter(COUNTY!="")
+
+glimpse(master_data_2008)
+
+
+# counties and ranks
+imp_counties_2008=master_data_2008%>%
+  select(COUNTY)%>%
+  group_by(COUNTY)%>%
+  summarise(count_ranks=n())   # count no. ranks and groups them by county
+
+head(imp_counties_2008)
+dim(imp_counties_2008)
+
+
+#join shp and ranks
+imp_counties_2008=rename(imp_counties_2008, NAME=COUNTY)   # rename to match shp file when joining
+
+imp_counties_2008=imp_counties_2008%>%
+  mutate(NAME=tolower(NAME))
+
+imp_sc_join_2008=sc%>%
+  left_join(imp_counties_2008, by="NAME")
+
+glimpse(imp_sc_join_2008)
+
+
+# plot counties by no. ranks
+ggplot() +
+  geom_sf(data=imp_sc_join_2008, aes(fill=count_ranks))+
+  scale_fill_gradientn(colors = c("green", "orange", "red"))+
+  ggtitle("2008 Ranks by County")
+
+
+
+### MAP BY BASINS
+# 2018
+imp_basins_2018=master_data_2018%>%
+  select(BASIN)%>%
+  group_by(BASIN)%>%
+  summarise(count_ranks=n())
+
+imp_basins_2018=rename(imp_basins_2018, Basin=BASIN)
+
+imp_basins_2018=imp_basins_2018%>%
+  mutate(Basin=tolower(Basin))
+
+master_data_basin=master_data_basin%>%
+  mutate(Basin=tolower(Basin))
+
+imp_basins_join_2018=master_data_basin%>%
+  left_join(imp_basins_2018, by="Basin")
+
+
+# plot
+ggplot() +
+  geom_sf(data=imp_basins_join_2018, aes(fill=count_ranks))+ # color counties by no. ranks
+  scale_fill_gradientn(colors = c("green", "orange", "red"))+
+  ggtitle("2018 Impairments by Basin")
+
+
+# 2008
+imp_basins_2008=master_data_2008%>%
+  select(BASIN)%>%
+  group_by(BASIN)%>%
+  summarise(count_ranks=n())
+
+imp_basins_2008=rename(imp_basins_2008, Basin=BASIN)
+
+imp_basins_2008=imp_basins_2008%>%
+  mutate(Basin=tolower(Basin))
+
+master_data_basin=master_data_basin%>%
+  mutate(Basin=tolower(Basin))
+
+imp_basins_join_2008=master_data_basin%>%
+  left_join(imp_basins_2008, by="Basin")
+
+
+# plot
+ggplot() +
+  geom_sf(data=imp_basins_join_2008, aes(fill=count_ranks))+ # color basins by no. ranks
+  scale_fill_gradientn(colors = c("green", "orange", "red"))+
+  ggtitle("2008 Impairments by Basin")
 
 
 

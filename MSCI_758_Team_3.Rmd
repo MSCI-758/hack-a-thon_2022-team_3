@@ -5,8 +5,8 @@ date: "4/15/2022"
 output: html_document
 ---
 
-```
-knitr::opts_chunk$set(fig.width=6, fig.asp = 0.618, collapse=TRUE) 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width=6, fig.asp = 0.618, collapse=TRUE)
 ```
 
 ```{r}
@@ -103,9 +103,190 @@ The figure (above) shows that the number of waterbody impairments in the state o
 
 ***
 
-#### Waterbody Impairment by County 
+#### Waterbody Impairment Maps 
+
+Below is the initial cleaning up and joining of the files to prepare them for creating rasters for 2008 and 2018.
+
+```{r}
+# R Code (KAT)
+
+## 2018
+# Converted 303d list from .xls to .csv before reading in
+master_data_2018=read_csv("data/2018303d_final.csv")   # SC Impaired Waters List 303d for 2018
+
+master_data_2018=master_data_2018%>%
+  filter(PRIORITY.RANK!="")%>%
+  mutate(PRIORITY.RANK=as.factor(PRIORITY.RANK))
+
+# clean up data
+master_data_2018_clean=master_data_2018%>%
+  filter(PRIORITY.RANK%in%c(1,2,3))%>%
+  mutate(PRIORITY.RANK=as.factor(PRIORITY.RANK))   # change class from character to categorical
+
+summary(master_data_2018_clean)
+
+# basic bar plot of priority ranks
+ggplot(data=master_data_2018_clean)+
+  geom_bar(aes(x=PRIORITY.RANK, fill=PRIORITY.RANK))+
+  theme_bw()
 
 
+# counties and ranks
+imp_counties_2018=master_data_2018_clean%>%
+  select(COUNTY,
+         PRIORITY.RANK)%>%
+  group_by(COUNTY)%>%
+  summarise(count_ranks=n())   # count no. ranks and groups them by county
+
+head(imp_counties_2018)
+
+# read in county shape file
+county_shp = st_read(dsn='data/USA_county_boundaries_cb_2018_us_county_5m', layer='cb_2018_us_county_5m')   #Can specify "layer" parameter
+
+shp = st_read('data/USA_county_boundaries_cb_2018_us_county_5m/cb_2018_us_county_5m.shp')   #Or just read in .shp file (reads in all layers)
+head(county_shp)
+
+sc = county_shp %>%
+  filter(STATEFP==45) %>%
+  mutate(NAME = tolower(NAME))
+glimpse(sc)
+
+# join files
+imp_counties_2018=rename(imp_counties_2018, NAME=COUNTY)   # rename to match shp file when joining
+
+imp_counties_2018=imp_counties_2018%>%
+  mutate(NAME=tolower(NAME))
+
+imp_sc_join_2018=sc%>%
+  left_join(imp_counties_2018, by="NAME")
+
+glimpse(imp_sc_join_2018)
+
+
+##2008
+master_data_2008=read_csv("data/SC_303d_lists_2006to2016/2008303dfinal020608prtyrk.csv")   # SC Impaired Waters List 303d for 2008
+
+glimpse(master_data_2008)
+
+master_data_2008=master_data_2008%>%   # doesn't have priority ranks
+  filter(COUNTY!="")
+
+glimpse(master_data_2008)
+
+# counties and ranks
+imp_counties_2008=master_data_2008%>%
+  select(COUNTY)%>%
+  group_by(COUNTY)%>%
+  summarise(count_ranks=n())   # count no. ranks and groups them by county
+
+head(imp_counties_2008)
+dim(imp_counties_2008)
+
+
+#join shp and ranks
+imp_counties_2008=rename(imp_counties_2008, NAME=COUNTY)   # rename to match shp file when joining
+
+imp_counties_2008=imp_counties_2008%>%
+  mutate(NAME=tolower(NAME))
+
+imp_sc_join_2008=sc%>%
+  left_join(imp_counties_2008, by="NAME")
+
+glimpse(imp_sc_join_2008)
+```
+
+Now that the data is ready to plot, I initially created a map of the ratio of area of water/total area of county. This can help explain the distribution of priority ranks and why some counties possess far greater impairments than others.
+
+```{r}
+# create a map with ratio of water to land per county
+  ### ONLY USED ONCE FOR ALL 3 YEAR COMPARISONS
+area_ratio=imp_sc_join_2018%>%
+  select(NAME,
+         count_ranks,
+         ALAND,
+         AWATER)%>%
+  mutate(ratio=AWATER/(ALAND+AWATER))   # ratio of water to land
+glimpse(area_ratio)
+
+ggplot() +
+  geom_sf(data=area_ratio, aes(fill=ratio))+ # color counties by water area
+  scale_fill_gradientn(colors = c("green", "orange", "red"))+
+  ggtitle("Ratio of Water to Land (m^2)")
+```
+
+The following figures are the number of impairments by county for the years 2008 and 2018. We can see an increase in ranks along the coast, but there are no dramatic changes in ranks over the 10 years. The coastal counties, as illustrated by the water ratio map, possess the highest number of impairments which is what we would expect. Interestingly, Greenville county has a high number of impaired waterbodies but a low ratio of water to land.
+
+```{r}
+# plot 2008
+ggplot() +
+  geom_sf(data=imp_sc_join_2008, aes(fill=count_ranks))+ # color counties by no. ranks
+  scale_fill_gradientn(colors = c("green", "orange", "red"))+
+  ggtitle("2008 Impairments by County")
+
+# plot 2018
+ggplot() +
+  geom_sf(data=imp_sc_join_2018, aes(fill=count_ranks))+ # color counties by no. ranks
+  scale_fill_gradientn(colors = c("green", "orange", "red"))+
+  ggtitle("2018 Impairments by County")
+```
+
+Finally, I plotted the same maps, but by basin rather than county. Several basins show small increases in impairment numbers, while there is no evident decrease in the others.
+
+```{r}
+### MAP BY BASINS
+
+# Read in boundaries of 8 major river basins in SC
+# https://sc-department-of-health-and-environmental-control-gis-sc-dhec.hub.arcgis.com/datasets/sc-major-river-basins/explore
+master_data_basin=st_read("data/SC_Major_River_Basins", "SC_Major_River_Basins")
+master_data_basin
+
+# 2008
+imp_basins_2008=master_data_2008%>%
+  select(BASIN)%>%
+  group_by(BASIN)%>%
+  summarise(count_ranks=n())
+
+imp_basins_2008=rename(imp_basins_2008, Basin=BASIN)
+
+imp_basins_2008=imp_basins_2008%>%
+  mutate(Basin=tolower(Basin))
+
+master_data_basin=master_data_basin%>%
+  mutate(Basin=tolower(Basin))
+
+imp_basins_join_2008=master_data_basin%>%
+  left_join(imp_basins_2008, by="Basin")
+
+# plot
+ggplot() +
+  geom_sf(data=imp_basins_join_2008, aes(fill=count_ranks))+ # color basins by no. ranks
+  scale_fill_gradientn(colors = c("green", "orange", "red"))+
+  ggtitle("2008 Impairments by Basin")
+
+
+# 2018
+imp_basins_2018=master_data_2018%>%
+  select(BASIN)%>%
+  group_by(BASIN)%>%
+  summarise(count_ranks=n())
+
+imp_basins_2018=rename(imp_basins_2018, Basin=BASIN)
+
+imp_basins_2018=imp_basins_2018%>%
+  mutate(Basin=tolower(Basin))
+
+master_data_basin=master_data_basin%>%
+  mutate(Basin=tolower(Basin))
+
+imp_basins_join_2018=master_data_basin%>%
+  left_join(imp_basins_2018, by="Basin")
+
+# plot
+ggplot() +
+  geom_sf(data=imp_basins_join_2018, aes(fill=count_ranks))+ # color counties by no. ranks
+  scale_fill_gradientn(colors = c("green", "orange", "red"))+
+  ggtitle("2018 Impairments by Basin")
+```
 
 ***
 
