@@ -60,6 +60,11 @@ ggplot() +
 
 ```
 
+In general, the number of waterbody impairments in South Carolina has been increasing over time. One major cause of this is the testing capacity of state agencies like the South Carolina Department of Health and Environmental Control (SC DHEC). As more waterbodies are tested, the overall number of impaired will increase. Another potential cause for waterbody impairment is that much of the state is experiencing changes in land use. As natural swamps or forested lands are converted to industrial or agricultural areas, more chemicals, both common and emergent, are entering aquatic systems, potentially causing impairments.
+
+There was a noticeable increase (52%) in the number of impaired waterbodies between 2002 and 2004. According to the 2004 water quality Report by SC DHEC, the waterbody impairment guidelines, "SC Regulation 61-68, Water Classifications Standards" were amended, effective June 2001. This change imposed restrictions on total phosphorus, total nitrogen, turbidity, and chlorophyll-a criteria for lakes. The amendment also changed metal criteria in freshwater. While these changes were enacted in 2001, there may have been an observed lag in regulation.  
+
+
 ***
 
 #### Waterbody Impairment by Basin (1998 vs. 2018)
