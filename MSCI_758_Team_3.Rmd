@@ -22,6 +22,44 @@ library(sf)
 
 #### Waterbody Impairment Time Series (1998 - 2018)
 
+```{r}
+
+year_ts = c("1998",
+            "2000", 
+            "2002",
+            "2004",
+            "2006",
+            "2008",
+            "2010",
+            "2012",
+            "2014",
+            "2016",
+            "2018")
+  
+impairments_ts = c(528,
+                   669,  
+                   649,
+                   992,
+                   1002,
+                   1050,
+                   1007,
+                   953,
+                   987,
+                   1038,
+                   1118)
+
+time_series_df = data.frame(year_ts, impairments_ts)
+time_series_df
+
+ggplot() + 
+  geom_col(data = time_series_df, aes(x = year_ts, y = impairments_ts)) + 
+  xlab("Year") + 
+  ylab("Number of Waterbody Impairments") + 
+  ggtitle("South Carolina Waterbody Impairments (1998-2018") +
+  theme_bw()
+
+```
+
 ***
 
 #### Waterbody Impairment by Basin (1998 vs. 2018)
